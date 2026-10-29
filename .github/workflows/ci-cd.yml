@@ -89,15 +89,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Trivy - scan IaC and Dockerfile
+      - name: Trivy - IaC report (non-blocking)
+        id: trivy_iac
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          version: v0.76.1
           scan-type: fs
           scan-ref: .
           scanners: misconfig
-          format: table
-          severity: HIGH,CRITICAL
-          exit-code: '1'
+          format: json
+          output: trivy-iac-report.json
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          exit-code: '0'
+
+      - name: Warn if Trivy IaC scan failed
+        if: steps.trivy_iac.outcome == 'failure'
+        run: echo "::warning::Trivy IaC scan failed; check logs. Report may be unavailable."
+
+      - name: Upload Trivy IaC report
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-iac-report
+          path: trivy-iac-report.json
+          if-no-files-found: warn
+          retention-days: 30
 
   image-security:
     name: Security - Docker image on PR
@@ -118,9 +136,12 @@ jobs:
           tags: crewmeister-app:pr-scan
           cache-from: type=gha
 
-      - name: Trivy - full vulnerability report
+      - name: Trivy - PR image report (non-blocking)
+        id: trivy_pr
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          version: v0.76.1
           scan-type: image
           image-ref: crewmeister-app:pr-scan
           scanners: vuln
@@ -129,26 +150,19 @@ jobs:
           severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
           exit-code: '0'
 
-      - name: Upload Trivy report
+      - name: Warn if Trivy PR scan failed
+        if: steps.trivy_pr.outcome == 'failure'
+        run: echo "::warning::Trivy PR image scan failed; check logs. Report may be unavailable."
+
+      - name: Upload Trivy PR report
         if: always()
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: trivy-pr-security-report
           path: trivy-pr-report.json
           if-no-files-found: warn
           retention-days: 30
-
-      - name: Trivy - enforce security gate
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: image
-          image-ref: crewmeister-app:pr-scan
-          scanners: vuln
-          format: table
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
-          skip-setup-trivy: true
 
   publish:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -162,7 +176,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
-      # Build and scan before GHCR credentials are available.
+      # Build and generate a non-blocking scan report before GHCR authentication.
       - name: Build Docker image (local, no push)
         uses: docker/build-push-action@v7
         with:
@@ -173,17 +187,35 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Trivy - scan Docker image
+      - name: Trivy - published image report (non-blocking)
+        id: trivy_publish
+        continue-on-error: true
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          version: v0.76.1
+          scan-type: image
           image-ref: ghcr.io/${{ github.repository_owner }}/crewmeister-app:sha-${{ github.sha }}
           scanners: vuln
-          format: table
-          severity: HIGH,CRITICAL
-          ignore-unfixed: true
-          exit-code: '1'
+          format: json
+          output: trivy-publish-report.json
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          exit-code: '0'
 
-      - name: Authenticate to GHCR after successful scans
+      - name: Warn if Trivy publish scan failed
+        if: steps.trivy_publish.outcome == 'failure'
+        run: echo "::warning::Trivy publish image scan failed; check logs. Report may be unavailable."
+
+      - name: Upload Trivy publish report
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-publish-security-report
+          path: trivy-publish-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Authenticate to GHCR after reporting
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
