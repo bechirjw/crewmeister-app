@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       mysql:
         image: mysql:8.4
@@ -74,7 +74,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      - uses: azure/setup-helm@v4
+      - uses: azure/setup-helm@v5.0.1
         with:
           version: v3.18.6
       - name: Helm lint and render for both environments
@@ -152,7 +152,7 @@ jobs:
         run: echo "::warning::Trivy IaC scan failed; check logs. Report may be unavailable."
 
       - name: Upload Trivy IaC report
-        if: always()
+        if: steps.trivy_iac.outcome == 'success'
         continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
@@ -201,7 +201,7 @@ jobs:
       - name: Upload Trivy PR report
         if: always()
         continue-on-error: true
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trivy-pr-security-report
           path: trivy-pr-report.json
