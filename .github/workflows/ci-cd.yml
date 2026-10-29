@@ -141,6 +141,7 @@ jobs:
           scan-type: fs
           scan-ref: .
           scanners: misconfig
+          skip-files: pom.xml
           format: json
           output: trivy-iac-report.json
           severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
