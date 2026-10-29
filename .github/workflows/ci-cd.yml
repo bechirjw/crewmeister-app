@@ -38,6 +38,8 @@ jobs:
           --health-interval=10s --health-timeout=5s --health-retries=30
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0  # Accurate branch/PR analysis by SonarQube Cloud
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -51,7 +53,27 @@ jobs:
           SPRING_DATASOURCE_PASSWORD: ci-app-password
         run: |
           chmod +x ./mvnw
-          ./mvnw -B -ntp verify
+          # Instrument the existing Maven test run and generate JaCoCo XML.
+          ./mvnw -B -ntp \
+            org.jacoco:jacoco-maven-plugin:0.8.16:prepare-agent \
+            verify \
+            org.jacoco:jacoco-maven-plugin:0.8.16:report
+      - name: Verify JaCoCo XML coverage report
+        run: |
+          if [[ ! -s target/site/jacoco/jacoco.xml ]]; then
+            echo "::error::Missing target/site/jacoco/jacoco.xml; inspect tests and Maven Surefire/Failsafe argLine configuration."
+            exit 1
+          fi
+
+      - name: Upload JaCoCo coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage
+          path: target/site/jacoco/
+          if-no-files-found: warn
+          retention-days: 30
+
       - uses: azure/setup-helm@v4
         with:
           version: v3.18.6
@@ -61,6 +83,27 @@ jobs:
           helm lint helm/crewmeister -f helm/crewmeister/values-aks.yaml
           helm template crewmeister helm/crewmeister -f helm/crewmeister/values-local.yaml >/dev/null
           helm template crewmeister helm/crewmeister -f helm/crewmeister/values-aks.yaml >/dev/null
+
+      # Fork PRs cannot access repository secrets. Never expose SONAR_TOKEN to fork code.
+      - name: SonarQube Cloud - code quality and JaCoCo coverage
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$SONAR_TOKEN" || -z "$SONAR_ORGANIZATION" || -z "$SONAR_PROJECT_KEY" ]]; then
+            echo "::error::Configure SONAR_TOKEN (secret), SONAR_ORGANIZATION and SONAR_PROJECT_KEY (repository variables)."
+            exit 1
+          fi
+          ./mvnw -B -ntp \
+            org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
+            -Dsonar.host.url=https://sonarcloud.io \
+            "-Dsonar.organization=${SONAR_ORGANIZATION}" \
+            "-Dsonar.projectKey=${SONAR_PROJECT_KEY}" \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
 
   security:
     name: Security - Gitleaks
