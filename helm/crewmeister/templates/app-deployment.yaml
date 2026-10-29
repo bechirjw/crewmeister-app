@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "crewmeister.fullname" . }}-app
+  labels:
+    {{- include "crewmeister.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  replicas: {{ .Values.app.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: crewmeister
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: app
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: crewmeister
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: app
+    spec:
+      {{- with .Values.app.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          {{- if .Values.app.image.digest }}
+          image: {{ printf "%s@%s" .Values.app.image.repository .Values.app.image.digest | quote }}
+          {{- else }}
+          image: {{ printf "%s:%s" .Values.app.image.repository .Values.app.image.tag | quote }}
+          {{- end }}
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.app.port }}
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: {{ printf "jdbc:mysql://%s-mysql:3306/%s" (include "crewmeister.fullname" .) .Values.mysql.database | quote }}
+            - name: SPRING_DATASOURCE_WRITER_URL
+              value: {{ printf "jdbc:mysql://%s-mysql:3306/%s" (include "crewmeister.fullname" .) .Values.mysql.database | quote }}
+            - name: SPRING_DATASOURCE_USERNAME
+              value: {{ .Values.mysql.username | quote }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysql.existingSecret | quote }}
+                  key: {{ .Values.mysql.passwordKey | quote }}
+            - name: ACTUATOR_ENDPOINTS
+              value: {{ ternary "health,info,prometheus" "health,info" .Values.serviceMonitor.enabled | quote }}
+            - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+              value: "true"
+          startupProbe:
+            httpGet: {path: /actuator/health, port: http}
+            periodSeconds: 10
+            failureThreshold: 42
+          readinessProbe:
+            httpGet: {path: /actuator/health/readiness, port: http}
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /actuator/health/liveness, port: http}
+            periodSeconds: 15
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}
+      volumes:
+        - name: tmp
+          emptyDir: {}

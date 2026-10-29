@@ -1,0 +1,33 @@
+{{- $cfg := .Values.ingress | default dict -}}
+{{- if (get $cfg "enabled" | default false) }}
+{{- $hosts := required "ingress.hosts doit definir au moins un hote lorsque ingress.enabled=true" $cfg.hosts -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "crewmeister.fullname" . }}-app
+  labels:
+    {{- include "crewmeister.labels" . | nindent 4 }}
+spec:
+  {{- with $cfg.className }}
+  ingressClassName: {{ . | quote }}
+  {{- end }}
+  {{- with $cfg.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- range $host := $hosts }}
+    - host: {{ $host.host | quote }}
+      http:
+        paths:
+          {{- range $path := $host.paths }}
+          - path: {{ $path.path | default "/" | quote }}
+            pathType: {{ $path.pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ include "crewmeister.fullname" $ }}-app
+                port:
+                  number: {{ $.Values.app.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}

@@ -1,0 +1,35 @@
+# VMware kubeadm: 2 app pods, spread across two worker nodes.
+app:
+  replicas: 2
+  # Initial image previously published to GHCR; CI later proposes fresh digests.
+  image:
+    digest: sha256:c6ba9515ea1caa76105629dde04e728d6f31ae0c5cea6a87836a8640924ba5de
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: In
+                values: [k8s-worker1, k8s-worker2]
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: crewmeister
+          app.kubernetes.io/component: app
+
+mysql:
+  nodeSelector:
+    kubernetes.io/hostname: k8s-worker2
+  persistence:
+    storageClassName: local-path
+    size: 5Gi
+
+# Enable after adding micrometer-registry-prometheus to pom.xml.
+serviceMonitor:
+  enabled: false
+networkPolicy:
+  enabled: true

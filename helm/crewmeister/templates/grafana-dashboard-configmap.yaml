@@ -1,0 +1,143 @@
+{{- $cfg := .Values.grafanaDashboard | default dict -}}
+{{- if (get $cfg "enabled" | default false) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "crewmeister.fullname" . }}-grafana-dashboard
+  labels:
+    grafana_dashboard: "1"
+    {{- include "crewmeister.labels" . | nindent 4 }}
+data:
+  crewmeister-spring-boot.json: |-
+    {
+      "id": null,
+      "uid": "crewmeister-spring-boot",
+      "title": "Crewmeister — Spring Boot",
+      "tags": [
+        "crewmeister",
+        "spring-boot"
+      ],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Requêtes HTTP par seconde",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{namespace=\"{{ .Release.Namespace }}\"}[5m]))",
+              "refId": "A",
+              "legendFormat": "Crewmeister"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Erreurs HTTP 5xx par seconde",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "expr": "sum(rate(http_server_requests_seconds_count{namespace=\"{{ .Release.Namespace }}\",status=~\"5..\"}[5m]))",
+              "refId": "A",
+              "legendFormat": "Crewmeister"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          }
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Mémoire heap JVM utilisée",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "expr": "sum(jvm_memory_used_bytes{namespace=\"{{ .Release.Namespace }}\",area=\"heap\"})",
+              "refId": "A",
+              "legendFormat": "Crewmeister"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 8
+          }
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "Connexions HikariCP actives",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "expr": "sum(hikaricp_connections_active{namespace=\"{{ .Release.Namespace }}\"})",
+              "refId": "A",
+              "legendFormat": "Crewmeister"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 8
+          }
+        }
+      ]
+    }
+{{- end }}

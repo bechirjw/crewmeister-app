@@ -1,0 +1,80 @@
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: crewmeister-mysql
+    restart: unless-stopped
+
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?required}
+      MYSQL_USER: ${MYSQL_USER:?required}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    networks:
+      - dev-net
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'MYSQL_PWD="$${MYSQL_PASSWORD}" mysql -h 127.0.0.1 -u "$${MYSQL_USER}" "$${MYSQL_DATABASE}" -e "SELECT 1" > /dev/null'
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    security_opt:
+      - no-new-privileges:true
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    image: crewmeister-app:local
+    container_name: crewmeister-app
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    environment:
+      SPRING_APPLICATION_NAME: crewmeister
+
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:?required}
+      SPRING_DATASOURCE_WRITER_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:?required}
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:?required}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:?required}
+
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+
+    networks:
+      - dev-net
+      - client-net
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'wget -q -O /dev/null http://127.0.0.1:8080/actuator/health || exit 1'
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  mysql_data:
+
+networks:
+  dev-net:
+    internal: true
+
+  client-net:
+    driver: bridge

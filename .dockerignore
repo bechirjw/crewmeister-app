@@ -1,0 +1,11 @@
+.git/
+target/
+.env
+.env.*
+.terraform/
+*.tfstate
+*.tfstate.*
+.kube/
+*.log
+.idea/
+.vscode/

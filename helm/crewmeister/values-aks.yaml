@@ -1,0 +1,9 @@
+# AKS will use its own cluster, state, storage and image credentials.
+app:
+  replicas: 1 # Increase when the AKS node pool supports spreading.
+mysql:
+  persistence:
+    storageClassName: managed-csi # Verify AKS StorageClass before deployment.
+    size: 5Gi
+serviceMonitor:
+  enabled: false

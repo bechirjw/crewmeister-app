@@ -31,3 +31,13 @@ build/
 
 ### VS Code ###
 .vscode/
+.env
+
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+**/crash.log
+**/terraform.tfvars
+**/*.auto.tfvars

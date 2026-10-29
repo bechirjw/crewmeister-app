@@ -1,0 +1,6 @@
+server:
+  service:
+    type: ClusterIP
+
+redis-ha:
+  enabled: false

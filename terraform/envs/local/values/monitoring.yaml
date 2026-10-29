@@ -1,0 +1,121 @@
+# Monitoring local VMware - ressources limitees
+
+grafana:
+  enabled: true
+
+  service:
+    type: ClusterIP
+
+  persistence:
+    enabled: false
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 384Mi
+
+prometheus:
+  enabled: true
+
+  service:
+    type: ClusterIP
+
+  prometheusSpec:
+    replicas: 1
+    retention: 24h
+    scrapeInterval: 60s
+    evaluationInterval: 60s
+
+    # Pas encore de PVC : stockage ephemere
+    storageSpec: {}
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 384Mi
+      limits:
+        cpu: 700m
+        memory: 1Gi
+
+    # Decouvrir les ServiceMonitors des autres namespaces
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector: {}
+
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorNamespaceSelector: {}
+
+alertmanager:
+  enabled: true
+
+  alertmanagerSpec:
+    replicas: 1
+    storage: {}
+
+    resources:
+      requests:
+        cpu: 30m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+prometheusOperator:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+kubeStateMetrics:
+  enabled: true
+
+nodeExporter:
+  enabled: true
+
+# Certaines metriques du control plane kubeadm
+# necessitent une configuration specifique.
+# On les activera apres verification des endpoints.
+kubeEtcd:
+  enabled: false
+
+# Control plane VMware / kubeadm
+
+kubeScheduler:
+  enabled: true
+  endpoints:
+    - "192.168.88.132"
+  service:
+    enabled: true
+    port: 10259
+    targetPort: 10259
+  serviceMonitor:
+    enabled: true
+    https: true
+
+kubeControllerManager:
+  enabled: true
+  endpoints:
+    - "192.168.88.132"
+  service:
+    enabled: true
+    port: 10257
+    targetPort: 10257
+  serviceMonitor:
+    enabled: true
+    https: true
+kubeProxy:
+  enabled: false
+
+defaultRules:
+  create: true
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false

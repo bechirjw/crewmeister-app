@@ -1,0 +1,27 @@
+{{- $cfg := .Values.networkPolicy | default dict -}}
+{{- if (get $cfg "enabled" | default false) }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "crewmeister.fullname" . }}-mysql
+  labels:
+    {{- include "crewmeister.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: crewmeister
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: mysql
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: crewmeister
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: app
+      ports:
+        - protocol: TCP
+          port: 3306
+{{- end }}

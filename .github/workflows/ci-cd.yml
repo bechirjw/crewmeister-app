@@ -1,0 +1,141 @@
+name: crewmeister-ci-cd
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'mvnw'
+      - '.mvn/**'
+      - 'helm/crewmeister/Chart.yaml'
+      - 'helm/crewmeister/values.yaml'
+      - 'helm/crewmeister/templates/**'
+      - '.github/workflows/ci-cd.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: challenge
+          MYSQL_USER: crewmeister
+          MYSQL_PASSWORD: ci-app-password
+          MYSQL_ROOT_PASSWORD: ci-root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -pci-root-password"
+          --health-interval=10s --health-timeout=5s --health-retries=30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+      - name: Maven verification against MySQL
+        env:
+          SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/challenge
+          SPRING_DATASOURCE_WRITER_URL: jdbc:mysql://127.0.0.1:3306/challenge
+          SPRING_DATASOURCE_USERNAME: crewmeister
+          SPRING_DATASOURCE_PASSWORD: ci-app-password
+        run: |
+          chmod +x ./mvnw
+          ./mvnw -B -ntp verify
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.18.6
+      - name: Helm lint and render for both environments
+        run: |
+          helm lint helm/crewmeister -f helm/crewmeister/values-local.yaml
+          helm lint helm/crewmeister -f helm/crewmeister/values-aks.yaml
+          helm template crewmeister helm/crewmeister -f helm/crewmeister/values-local.yaml >/dev/null
+          helm template crewmeister helm/crewmeister -f helm/crewmeister/values-aks.yaml >/dev/null
+
+  publish:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push to GHCR
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/crewmeister-app:sha-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  promote-local:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      IMAGE_DIGEST: ${{ needs.publish.outputs.digest }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: true
+      - name: Prepare GitOps promotion change
+        run: |
+          python3 - <<'PYCODE'
+          import os, re
+          from pathlib import Path
+          path = Path('helm/crewmeister/values-local.yaml')
+          original = path.read_text()
+          digest = os.environ['IMAGE_DIGEST']
+          assert re.fullmatch(r'sha256:[0-9a-f]{64}', digest), digest
+          updated, count = re.subn(r'(?m)^(\s*digest:\s*)sha256:[0-9a-f]{64}(\s*)$', lambda m: m.group(1) + digest + m.group(2), original)
+          if count != 1:
+              raise SystemExit('Expected exactly one SHA256 digest in values-local.yaml')
+          path.write_text(updated)
+          PYCODE
+          if git diff --quiet -- helm/crewmeister/values-local.yaml; then
+            echo "Image digest unchanged; nothing to promote."
+            echo "changed=false" >> "$GITHUB_ENV"
+          else
+            echo "changed=true" >> "$GITHUB_ENV"
+          fi
+      - name: Open or update promotion pull request
+        if: env.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c ci/promote-local-image
+          git add helm/crewmeister/values-local.yaml
+          git commit -m "chore(gitops): promote Crewmeister image digest"
+          git push --force --set-upstream origin ci/promote-local-image
+          if gh pr view ci/promote-local-image --json number >/dev/null 2>&1; then
+            echo 'Updated existing promotion PR'
+          else
+            gh pr create --base main --head ci/promote-local-image \
+            --title 'chore(gitops): promote Crewmeister image to VMware' \
+            --body 'CI passed Maven/Helm checks, built and published this immutable GHCR image digest. Merge to let Argo CD deploy it.'
+          fi
