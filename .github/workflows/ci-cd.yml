@@ -63,8 +63,8 @@ jobs:
           helm template crewmeister helm/crewmeister -f helm/crewmeister/values-aks.yaml >/dev/null
 
   security:
-    name: Security - secrets and source
-    runs-on: ubuntu-latest
+    name: Security - Gitleaks
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -80,15 +80,23 @@ jobs:
           GITLEAKS_ENABLE_COMMENTS: 'false'
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
 
-      - name: Trivy - scan dependencies and IaC
+  source-security:
+    name: Security - IaC misconfigurations
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Trivy - scan IaC and Dockerfile
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
-          scanners: vuln,misconfig
+          scanners: misconfig
           format: table
           severity: HIGH,CRITICAL
-          ignore-unfixed: true
           exit-code: '1'
 
   image-security:
@@ -110,19 +118,41 @@ jobs:
           tags: crewmeister-app:pr-scan
           cache-from: type=gha
 
-      - name: Trivy - scan PR Docker image
+      - name: Trivy - full vulnerability report
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          scan-type: image
+          image-ref: crewmeister-app:pr-scan
+          scanners: vuln
+          format: json
+          output: trivy-pr-report.json
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          exit-code: '0'
+
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-pr-security-report
+          path: trivy-pr-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Trivy - enforce security gate
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
           image-ref: crewmeister-app:pr-scan
           scanners: vuln
           format: table
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
+          skip-setup-trivy: true
 
   publish:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [verify, security]
+    needs: [verify, security, source-security]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -132,7 +162,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
-      # Build and scan *before* GHCR credentials are available.
+      # Build and scan before GHCR credentials are available.
       - name: Build Docker image (local, no push)
         uses: docker/build-push-action@v7
         with:
