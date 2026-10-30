@@ -3,7 +3,7 @@ app:
   replicas: 2
   # Initial image previously published to GHCR; CI later proposes fresh digests.
   image:
-    digest: sha256:c6ba9515ea1caa76105629dde04e728d6f31ae0c5cea6a87836a8640924ba5de
+    digest: sha256:c60a780af60c8b8917595bca6823859006398f29b408120c3f8fabff07b2b66f
   affinity:
     nodeAffinity:
       requiredDuringSchedulingIgnoredDuringExecution:
