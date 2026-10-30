@@ -30,6 +30,6 @@ mysql:
 
 # Enable after adding micrometer-registry-prometheus to pom.xml.
 serviceMonitor:
-  enabled: false
+  enabled: true
 networkPolicy:
   enabled: true
