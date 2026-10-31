@@ -1,0 +1,21 @@
+- name: Reset kubeadm state
+  ansible.builtin.command: kubeadm reset -f
+  failed_when: false
+  changed_when: true
+
+- name: Remove Kubernetes and CNI state
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/kubernetes
+    - /var/lib/etcd
+    - /etc/cni/net.d
+    - /var/lib/cni
+    - "/home/{{ ansible_user }}/.kube"
+
+- name: Restart kubelet after reset
+  ansible.builtin.systemd:
+    name: kubelet
+    state: restarted
+  failed_when: false

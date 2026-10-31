@@ -1,0 +1,26 @@
+
+subscription_id = "038491f6-7a3f-4bf2-9b94-db80030ea006"
+
+location    = "westeurope"
+environment = "student"
+
+# AKS system node pool
+system_vm_size    = "Standard_D4as_v5"
+system_node_count = 2
+
+# Azure virtual network
+create_custom_network = true
+
+# Azure cost budget (disabled initially)
+enable_budget = false
+
+budget_amount = 20
+budget_start  = "2026-10-01T00:00:00Z"
+
+budget_contact_emails = []
+
+tags = {
+  project     = "crewmeister"
+  environment = "student"
+  managed_by  = "terraform"
+}

@@ -2,7 +2,18 @@
 
 grafana:
   enabled: true
+  grafana.ini:
+    smtp:
+      enabled: true
+      host: smtp.gmail.com:587
+      from_address: "bechir.ben.jouini@gmail.com"
+      from_name: "Crewmeister Monitoring"
+      startTLS_policy: MandatoryStartTLS
 
+  smtp:
+    existingSecret: grafana-smtp
+    userKey: user
+    passwordKey: password
   service:
     type: ClusterIP
 

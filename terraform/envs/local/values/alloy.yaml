@@ -1,0 +1,60 @@
+controller:
+  type: deployment
+  replicas: 1
+
+alloy:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi
+
+  configMap:
+    content: |
+      logging {
+        level = "info"
+      }
+
+      discovery.kubernetes "crewmeister" {
+        role = "pod"
+
+        namespaces {
+          names = ["crewmeister"]
+        }
+      }
+
+      discovery.relabel "crewmeister" {
+        targets = discovery.kubernetes.crewmeister.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label = "pod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label = "container"
+        }
+
+        rule {
+          target_label = "cluster"
+          replacement = "crewmeister-vmware"
+        }
+      }
+
+      loki.source.kubernetes "crewmeister" {
+        targets = discovery.relabel.crewmeister.output
+        forward_to = [loki.write.local.receiver]
+      }
+
+      loki.write "local" {
+        endpoint {
+          url = "http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push"
+        }
+      }

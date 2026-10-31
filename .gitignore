@@ -1,43 +1,157 @@
+
+# ============================================================
+# CREWMEISTER - GITIGNORE
+# Spring Boot | Docker | Terraform | Kubernetes | Helm | Ansible
+# Environments: VMware Local + Azure AKS
+# ============================================================
+
+
+# ============================================================
+# JAVA / MAVEN / SPRING BOOT
+# ============================================================
+
 HELP.md
 target/
+*.class
+*.log
+
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### STS ###
+
+# ============================================================
+# ECLIPSE / SPRING TOOL SUITE
+# ============================================================
+
 .apt_generated
 .classpath
 .factorypath
 .project
-.settings
+.settings/
 .springBeans
-.sts4-cache
+.sts4-cache/
 
-### IntelliJ IDEA ###
-.idea
+
+# ============================================================
+# INTELLIJ IDEA
+# ============================================================
+
+.idea/
 *.iws
 *.iml
 *.ipr
 
-### NetBeans ###
+
+# ============================================================
+# NETBEANS
+# ============================================================
+
 /nbproject/private/
 /nbbuild/
 /dist/
 /nbdist/
 /.nb-gradle/
+
 build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
-### VS Code ###
-.vscode/
-.env
 
-# Terraform
-**/.terraform/
-**/*.tfstate
-**/*.tfstate.*
-**/*.tfplan
-**/crash.log
-**/terraform.tfvars
-**/*.auto.tfvars
+# ============================================================
+# VISUAL STUDIO CODE
+# ============================================================
+
+.vscode/
+
+
+# ============================================================
+# TERRAFORM - LOCAL CACHE
+# ============================================================
+
+.terraform/
+
+
+# ============================================================
+# TERRAFORM - STATE / BACKUPS
+# ============================================================
+
+*.tfstate
+*.tfstate.*
+*.tfplan
+
+# Terraform variable files
+*.tfvars
+*.tfvars.json
+
+# Keep shareable examples
+!*.tfvars.example
+!*.tfvars.json.example
+
+# Terraform crash files
+crash.log
+crash.*.log
+
+# Terraform runtime
+.terraform.tfstate.lock.info
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# IMPORTANT:
+# Keep .terraform.lock.hcl in Git.
+# Keep backend.tf, providers.tf and versions.tf in Git.
+
+
+# ============================================================
+# SECRETS / ENVIRONMENT VARIABLES
+# ============================================================
+
+.env
+.env.*
+!.env.example
+
+aks-db.env
+
+*.pem
+*.p12
+*.pfx
+
+
+# ============================================================
+# KUBERNETES CREDENTIALS
+# ============================================================
+
+.kube/
+kubeconfig
+kubeconfig.*
+*-admin.conf
+
+
+# ============================================================
+# ANSIBLE LOCAL FILES
+# ============================================================
+
+*.retry
+.ansible/
+
+
+# ============================================================
+# PYTHON CACHE (ANSIBLE SUPPORT)
+# ============================================================
+
+__pycache__/
+*.pyc
+
+
+# ============================================================
+# OPERATING SYSTEM
+# ============================================================
+
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+

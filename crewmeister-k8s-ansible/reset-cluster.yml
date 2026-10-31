@@ -1,0 +1,19 @@
+---
+# DANGEROUS: destroys Kubernetes state and can delete etcd data.
+# Run only with -e confirm_reset=true after backups.
+- name: Confirm destructive cluster reset explicitly
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Require explicit confirmation
+      ansible.builtin.assert:
+        that:
+          - confirm_reset | default(false) | bool
+        fail_msg: 'Reset denied. Explicitly pass -e confirm_reset=true after saving needed data.'
+
+- name: Reset Kubernetes state on all nodes
+  hosts: all
+  gather_facts: false
+  become: true
+  roles:
+    - reset

@@ -48,7 +48,7 @@ prometheus:
     podMonitorNamespaceSelector: {}
 
 alertmanager:
-  enabled: true
+  enabled: false
 
   alertmanagerSpec:
     replicas: 1

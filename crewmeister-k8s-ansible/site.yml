@@ -1,0 +1,60 @@
+---
+- name: Run preflight gates before modifying any VM
+  ansible.builtin.import_playbook: preflight.yml
+
+- name: Prepare Ubuntu nodes, containerd and kubeadm
+  hosts: all
+  gather_facts: true
+  become: true
+  roles:
+    - common
+    - containerd
+    - kubernetes
+
+- name: Initialize the single Kubernetes control plane
+  hosts: first_control_plane
+  gather_facts: true
+  become: true
+  roles:
+    - control_plane
+
+- name: Install Calico pod networking and network policy
+  hosts: first_control_plane
+  gather_facts: false
+  become: true
+  roles:
+    - calico
+
+- name: Join both workers
+  hosts: workers
+  gather_facts: true
+  become: true
+  serial: 2
+  roles:
+    - workers
+
+- name: Verify every node is Ready and core networking is healthy
+  hosts: first_control_plane
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Wait for all 3 nodes to report Ready
+      ansible.builtin.command: >-
+        kubectl --kubeconfig /etc/kubernetes/admin.conf
+        wait --for=condition=Ready nodes --all --timeout=600s
+      changed_when: false
+
+    - name: Wait for Calico network agents
+      ansible.builtin.command: >-
+        kubectl --kubeconfig /etc/kubernetes/admin.conf
+        -n kube-system rollout status daemonset/calico-node --timeout=600s
+      changed_when: false
+
+    - name: Wait for CoreDNS
+      ansible.builtin.command: >-
+        kubectl --kubeconfig /etc/kubernetes/admin.conf
+        -n kube-system rollout status deployment/coredns --timeout=600s
+      changed_when: false
+
+  roles:
+    - validate

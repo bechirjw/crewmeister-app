@@ -1,0 +1,7 @@
+# Do not commit credentials or machine-dependent data
+.kube/
+*.kubeconfig
+*.key
+*.pem
+*.retry
+.vagrant/

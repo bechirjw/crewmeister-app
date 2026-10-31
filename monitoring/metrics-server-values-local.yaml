@@ -1,0 +1,6 @@
+# VMware kubeadm laboratory configuration
+# TEMPORARY: bypass Kubelet serving certificate verification.
+# Replace with properly signed Kubelet certificates.
+
+args:
+  - --kubelet-insecure-tls

@@ -1,0 +1,22 @@
+# VMware NAT network, addresses observed on 2026-10-27.
+# Re-check `hostname -I` on all VMs before installation.
+# The inventory alias is NOT applied to the master Linux hostname.
+all:
+  vars:
+    ansible_user: master-crewmeister
+    ansible_python_interpreter: /usr/bin/python3
+
+  children:
+    first_control_plane:
+      hosts:
+        k8s-master-1:
+    control_plane:
+      hosts:
+        k8s-master-1:
+          ansible_host: 192.168.88.132
+    workers:
+      hosts:
+        k8s-worker1:
+          ansible_host: 192.168.88.131
+        k8s-worker2:
+          ansible_host: 192.168.88.133

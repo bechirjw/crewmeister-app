@@ -1,0 +1,22 @@
+# Single-control-plane, two-worker lab -- VMware Workstation + Ubuntu 22.04.
+cluster_name: crewmeister
+kubernetes_minor_version: "1.36"
+kubernetes_api_port: 6443
+
+# These do not overlap the VMware NAT management subnet 192.168.88.0/24.
+pod_network_cidr: 10.244.0.0/16
+service_network_cidr: 10.96.0.0/12
+cluster_dns_domain: cluster.local
+
+# Raw-manifest deployment preserves original project's calico role and
+# remains simple for this three-node lab (operator preferred long term).
+calico_version: v3.32.2
+calico_manifest_url: "https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/calico.yaml"
+calico_ip_autodetection_method: kubernetes-internal-ip
+
+# Single control plane. No kube-vip/MetalLB needed in the initial stage.
+first_control_plane_host: "{{ groups['first_control_plane'][0] }}"
+kubernetes_api_endpoint: "{{ hostvars[first_control_plane_host].ansible_host }}:{{ kubernetes_api_port }}"
+node_ip: "{{ ansible_host }}"
+apiserver_advertise_address: "{{ ansible_host }}"
+kubeadm_token_ttl: 2h

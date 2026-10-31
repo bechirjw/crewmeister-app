@@ -1,0 +1,44 @@
+---
+- name: Download pinned Calico raw manifest
+  ansible.builtin.get_url:
+    url: "{{ calico_manifest_url }}"
+    dest: /tmp/crewmeister-calico.yaml
+    mode: '0644'
+
+# Essential: Calico's default 192.168.0.0/16 overlaps VMware's
+# 192.168.88.0/24. Explicitly set 10.244.0.0/16 before first install.
+- name: Set Calico pod pool to kubeadm pod network CIDR
+  ansible.builtin.replace:
+    path: /tmp/crewmeister-calico.yaml
+    regexp: '(?m)^            # - name: CALICO_IPV4POOL_CIDR\n            #   value: "192.168.0.0/16"$'
+    replace: '            - name: CALICO_IPV4POOL_CIDR\n              value: "{{ pod_network_cidr }}"'
+
+- name: Verify Calico pod pool override exists
+  ansible.builtin.shell: >-
+    grep -Eq '^[[:space:]]+- name: CALICO_IPV4POOL_CIDR$' /tmp/crewmeister-calico.yaml
+  changed_when: false
+
+- name: Apply Calico manifest
+  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf apply -f /tmp/crewmeister-calico.yaml
+  register: calico_apply
+  changed_when: "' created' in calico_apply.stdout or ' configured' in calico_apply.stdout"
+
+- name: Set Calico source interface by Kubernetes InternalIP
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf
+    -n kube-system set env daemonset/calico-node
+    IP_AUTODETECTION_METHOD={{ calico_ip_autodetection_method }}
+  register: calico_autodetection
+  changed_when: "'updated' in calico_autodetection.stdout"
+
+- name: Wait for Calico daemonset
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf
+    -n kube-system rollout status daemonset/calico-node --timeout=600s
+  changed_when: false
+
+- name: Wait for Calico controllers
+  ansible.builtin.command: >-
+    kubectl --kubeconfig /etc/kubernetes/admin.conf
+    -n kube-system rollout status deployment/calico-kube-controllers --timeout=600s
+  changed_when: false

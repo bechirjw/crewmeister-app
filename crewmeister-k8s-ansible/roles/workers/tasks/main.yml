@@ -1,0 +1,10 @@
+---
+- name: Check if worker is already joined to Kubernetes
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: worker_kubelet_conf
+
+- name: Join worker to single control plane using short-lived token
+  ansible.builtin.command: "{{ hostvars[first_control_plane_host].worker_join_command }}"
+  when: not worker_kubelet_conf.stat.exists
+  no_log: true

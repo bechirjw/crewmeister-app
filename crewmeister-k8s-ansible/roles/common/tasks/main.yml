@@ -1,0 +1,72 @@
+---
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - python3
+      - jq
+      - socat
+      - conntrack
+      - ipset
+      - ebtables
+      - ethtool
+    state: present
+    update_cache: true
+    lock_timeout: 180
+
+# Intentionally do NOT change hostname. The master's original hostname stays.
+- name: Add real node hostnames to /etc/hosts
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} CREWMEISTER KUBERNETES NODES"
+    block: |
+      {% for host in groups['all'] %}
+      {{ hostvars[host].ansible_host }} {{ hostvars[host].ansible_hostname }}
+      {% endfor %}
+
+- name: Disable swap immediately
+  ansible.builtin.command: swapoff -a
+  when: ansible_swaptotal_mb | int > 0
+  changed_when: true
+
+- name: Disable swap in fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\s+swap\s+.*)$'
+    replace: '# \1'
+
+- name: Load required kernel modules
+  ansible.builtin.command: "modprobe {{ item }}"
+  changed_when: false
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Persist kernel modules
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k8s.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      overlay
+      br_netfilter
+
+- name: Persist Kubernetes sysctl values
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-crewmeister-k8s.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      net.bridge.bridge-nf-call-iptables = 1
+      net.bridge.bridge-nf-call-ip6tables = 1
+      net.ipv4.ip_forward = 1
+  register: sysctl_config
+
+- name: Apply Kubernetes sysctl values
+  ansible.builtin.command: sysctl --system
+  changed_when: false
+  when: sysctl_config.changed

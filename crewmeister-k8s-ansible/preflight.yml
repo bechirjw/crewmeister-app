@@ -1,0 +1,30 @@
+---
+- name: Verify VMware Ubuntu machines before cluster installation
+  hosts: all
+  gather_facts: true
+  become: false
+  tasks:
+    - name: Verify supported lab OS and resources
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution == 'Ubuntu'
+          - ansible_distribution_version == '22.04'
+          - ansible_processor_vcpus | int >= 2
+          - ansible_memtotal_mb | int >= 1900
+        fail_msg: "VM {{ inventory_hostname }} must be Ubuntu 22.04, >=2 vCPU and >=2GiB RAM."
+
+    - name: Verify inventory management IP belongs to this VM
+      ansible.builtin.assert:
+        that:
+          - ansible_host in ansible_all_ipv4_addresses
+        fail_msg: "{{ inventory_hostname }} does not have IP {{ ansible_host }}. Check VMware DHCP/networking."
+
+    - name: Verify three unique cloned machine identities and correct topology
+      ansible.builtin.assert:
+        that:
+          - groups['control_plane'] | length == 1
+          - groups['workers'] | length == 2
+          - (groups['all'] | map('extract', hostvars, 'ansible_machine_id') | unique | list | length) == 3
+        fail_msg: "Expected 1 control plane, 2 workers, and unique /etc/machine-id values."
+      run_once: true
+      delegate_to: localhost
