@@ -305,31 +305,7 @@ Images are referenced relative to this root README, for example:
 
 Image filenames are case-sensitive. Ensure each screenshot exists under `docs/screenshots/` and does not expose passwords, tokens, kubeconfigs, or private keys.
 
-## Additional Screenshots
 
-These images are included for reference. Review the actual screenshot contents and move each image to its relevant technical section with a precise caption.
-
-![Evidence 2026-10-27 205018](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-27%20205018.png)
-
-![Evidence 2026-10-30 210719](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-30%20210719.png)
-
-![Evidence 2026-11-01 111711](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20111711.png)
-
-![Evidence 2026-11-01 112136](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20112136.png)
-
-![Evidence 2026-11-01 112418](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20112418.png)
-
-![Evidence 2026-11-01 112443](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20112443.png)
-
-![Evidence 2026-11-01 114742](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20114742.png)
-
-![Evidence 2026-11-01 114951](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20114951.png)
-
-![Evidence 2026-11-01 115458](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20115458.png)
-
-![DevOps GitOps Architecture Flow-1](docs/screenshots/DevOps%20GitOps%20Architecture%20Flow-1.png)
-
-![Hybrid Infrastructure & Application Delivery (1)-1](docs/screenshots/Hybrid%20Infrastructure%20%26%20Application%20Delivery%20%281%29-1.png)
 
 ## Quick Verification
 
