@@ -1,5 +1,3 @@
-<div align="center">
-
 # Crewmeister — DevSecOps & GitOps Platform
 
 **Secure, automated Kubernetes delivery for a Spring Boot application**
@@ -7,8 +5,6 @@
 *From source code to a reviewed, observable Kubernetes release*
 
 [Overview](#overview) · [Architecture](#architecture) · [Docker](#docker--docker-compose) · [Ansible](#on-premises-kubernetes-with-ansible) · [Terraform / AKS](#azure-aks-with-terraform) · [CI/CD](#github-actions--devsecops-pipeline) · [GitOps](#helm--argo-cd-gitops) · [Observability](#monitoring-logging--alerting) · [Testing](#application--api-testing)
-
-</div>
 
 ## Overview
 
@@ -93,6 +89,8 @@ ansible-playbook -i inventory.yml site.yml --list-tasks
 cd ..
 ```
 
+![Ansible configuration evidence](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-27%20154419.png)
+
 **Check the local cluster** (adjust the kubeconfig location to your workstation):
 
 ```bash
@@ -136,6 +134,8 @@ kubectl --kubeconfig="$HOME/.kube/crewmeister-aks" get pods -A -o wide
 ```
 
 ![Azure AKS node pools](docs/screenshots/aks-node-pools.png)
+
+![Azure AKS resource overview](docs/screenshots/MC_rg-crew-student-aks_aks-crew-student_francecentral.png)
 
 ---
 
@@ -196,6 +196,8 @@ kubectl get pods -A -o wide
 
 ![GitOps release evidence](docs/screenshots/gitops-evidence.png)
 
+![Additional GitOps screenshot](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-29%20170546.png)
+
 The key distinction is **validated artifact versus authorized deployment**: a successful image build does not by itself grant permission to deploy.
 
 ---
@@ -220,6 +222,14 @@ kubectl top nodes  # Requires a working metrics API
 
 Confirm the metrics collector, Loki ingestion agent, and notification receiver in actual deployment manifests before claiming that an integration is operational. A Grafana dashboard alone does not demonstrate working alert notifications.
 
+### Additional observability screenshots
+
+![Observability screenshot 1](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-30%20210132.png)
+
+![Observability screenshot 2](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-30%20210052.png)
+
+![Observability screenshot 3](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-30%20194629.png)
+
 ---
 
 ## Persistent Storage — Local Path Provisioner
@@ -240,6 +250,10 @@ KUBECONFIG="$HOME/.kube/crewmeister-admin.conf" kubectl get pods -n local-path-s
 ---
 
 ## Application & API Testing
+
+![Application test screenshot 1](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-31%20134446.png)
+
+![Application test screenshot 2](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-31%20134623.png)
 
 Run the Maven tests and package the application:
 
@@ -296,6 +310,32 @@ Images are referenced relative to this root README, for example:
 
 Image filenames are case-sensitive. Ensure each screenshot exists under `docs/screenshots/` and does not expose passwords, tokens, kubeconfigs, or private keys.
 
+## Additional Screenshots
+
+These images are included for reference. Review the actual screenshot contents and move each image to its relevant technical section with a precise caption.
+
+![Evidence 2026-10-27 205018](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-27%20205018.png)
+
+![Evidence 2026-10-30 210719](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-30%20210719.png)
+
+![Evidence 2026-11-01 111711](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20111711.png)
+
+![Evidence 2026-11-01 112136](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20112136.png)
+
+![Evidence 2026-11-01 112418](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20112418.png)
+
+![Evidence 2026-11-01 112443](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20112443.png)
+
+![Evidence 2026-11-01 114742](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20114742.png)
+
+![Evidence 2026-11-01 114951](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20114951.png)
+
+![Evidence 2026-11-01 115458](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20115458.png)
+
+![DevOps GitOps Architecture Flow-1](docs/screenshots/DevOps%20GitOps%20Architecture%20Flow-1.png)
+
+![Hybrid Infrastructure & Application Delivery (1)-1](docs/screenshots/Hybrid%20Infrastructure%20%26%20Application%20Delivery%20%281%29-1.png)
+
 ## Quick Verification
 
 ```bash
@@ -314,10 +354,6 @@ helm lint helm/crewmeister -f helm/crewmeister/values-local.yaml
 
 ---
 
-<div align="center">
-
 **Infrastructure as Code · Security-Aware CI · Review-Controlled GitOps · Observable Kubernetes**
 
-Crewmeister DevSecOps engineering project
-
-</div>
+*Crewmeister DevSecOps engineering project*
