@@ -123,10 +123,11 @@ terraform fmt -check -recursive
 terraform init
 terraform validate
 terraform plan
+terraform apply
 cd ..
 ```
 
-`terraform plan` previews proposed changes; it is **not** proof that Azure resources were deployed. To confirm an existing AKS cluster, use the kubeconfig and Azure configuration appropriate to your environment:
+
 
 ```bash
 kubectl --kubeconfig="$HOME/.kube/crewmeister-aks" get nodes -L agentpool
@@ -135,8 +136,8 @@ kubectl --kubeconfig="$HOME/.kube/crewmeister-aks" get pods -A -o wide
 
 ![Azure AKS node pools](docs/screenshots/aks-node-pools.png)
 
-![Azure AKS resource overview](docs/screenshots/MC_rg-crew-student-aks_aks-crew-student_francecentral.png)
-
+![Azure AKS resource overview](docs/screenshots/MC_rg-crew-student-aks_aks-crew-student_francecentral.png) 
+![Application test screenshot 3](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20200408.png)
 ---
 
 ## GitHub Actions — DevSecOps Pipeline
