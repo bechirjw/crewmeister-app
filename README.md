@@ -1,68 +1,359 @@
-# Crewmeister Challenge
+# Crewmeister — DevSecOps & GitOps Platform
 
-## Background
+**Secure, automated Kubernetes delivery for a Spring Boot application**
 
-At Crewmeister, our development team is continuously growing. We aim to hire the best educated, motivated, and enthusiastic people in the field who have fun building up Crewmeister in our vision to empower small businesses to thrive in a digital world. For this quest, we are continuously getting new applicants from all over the world. To filter which candidates could be a good fit, we provide our candidates with a coding challenge that we manually review and evaluate.
+*From source code to a reviewed, observable Kubernetes release*
+
+[Overview](#overview) · [Architecture](#architecture) · [Docker](#docker--docker-compose) · [Ansible](#on-premises-kubernetes-with-ansible) · [Terraform / AKS](#azure-aks-with-terraform) · [CI/CD](#github-actions--devsecops-pipeline) · [GitOps](#helm--argo-cd-gitops) · [Observability](#monitoring-logging--alerting) · [Testing](#application--api-testing)
+
+## Overview
+
+Crewmeister is a Java Spring Boot application used to demonstrate an end-to-end **DevSecOps and GitOps** delivery workflow. The project brings together containerized local development, infrastructure automation, security-aware continuous integration, review-controlled delivery, and Kubernetes observability.
+
+| Area | Technologies | Engineering objective |
+| --- | --- | --- |
+| Application and local development | Spring Boot, Maven, Docker, Docker Compose | Repeatable builds and local execution |
+| On-premises Kubernetes | VMware, Ubuntu, Kubernetes, Ansible | Automated multi-node cluster setup |
+| Azure infrastructure | Terraform, Azure Kubernetes Service (AKS) | Reusable Infrastructure as Code |
+| Continuous integration | GitHub Actions, Maven, SonarQube Cloud, Gitleaks, Trivy | Automated tests, analysis, and security feedback |
+| Continuous delivery | Pull requests, Helm, Argo CD | Traceable, review-controlled GitOps releases |
+| Observability | Grafana, Loki, metrics and alerting components | Workload health, logs, and operational visibility |
+| Persistent storage | PersistentVolumes, PVCs, Local Path Provisioner | Dynamic node-local storage for the on-premises cluster |
+
+> **Verification note:** This README describes the project's architecture and workstreams. The exact enforcement of security gates, branch-protection rules, Terraform backend, live deployments, and alert notifications must be verified against the active configuration before being described as operational or production-ready.
+
+## Architecture
+
+### 1. Application delivery workflow
+
+![DevSecOps and GitOps application delivery](docs/screenshots/devsecops-gitops-flow.png)
+
+Continuous integration validates code and creates a traceable container artifact. A reviewed change to the GitOps deployment configuration authorizes a release; **Argo CD** reconciles the approved desired state with Kubernetes according to its configured synchronization policy. Mandatory checks and approval requirements depend on repository settings.
+
+### 2. Hybrid Kubernetes infrastructure
+
+![Hybrid Kubernetes infrastructure architecture](docs/screenshots/hybrid-infrastructure.png)
+
+- **On-premises VMware:** Kubernetes host and cluster preparation automated with Ansible.
+- **Azure AKS:** Managed Kubernetes infrastructure described with Terraform.
+- **Helm + Argo CD:** Reusable application packaging and declarative Kubernetes deployment across environments, with separate configuration values where required.
 
 ---
 
-## DevOps Engineer Task
+## Docker & Docker Compose
 
-As a DevOps Engineer at Crewmeister, you will be in charge of several challenging tasks in your daily work. One of your core responsibilities will be to ensure that the system is always running smoothly and that the application is deployed successfully to our customers.
+The root [`Dockerfile`](Dockerfile) packages the application as a container image. [`compose.yaml`](compose.yaml) defines the local multi-container environment for development and troubleshooting.
 
-In this challenge, you should use DevOps best practices to architect and implement the complete cycle of building, packaging, and deploying a Java application (specified later in this document). 
+```bash
+# Validate configuration (avoid exposing rendered secret values)
+docker compose config --quiet
 
-The following are core technologies/tools that should be present in the solution:
+# Build and start services
+docker compose up --build -d
 
-- Dockerfile
-- Helm Chart
-- Terraform to interact with the Kubernetes cluster
+# Inspect running services and recent logs
+docker compose ps
+docker compose logs --tail=80
+```
 
-You have the flexibility to utilize any cloud provider of your choice to deploy and run the application effectively. Additionally, it should be designed to operate seamlessly on local machines, allowing for a versatile setup that caters to various operational preferences and environments.
+![Docker Compose environment](docs/screenshots/docker-compose.png)
 
-## Plus:
+**Container and secret-management practices:** Use `.env.example` for placeholder variable names, exclude sensitive `.env` files, avoid embedding credentials in images, tag images with a source revision, and configure health checks and resource limits where supported.
 
-- Create a CI Pipeline in Github to automate the application lifecycle
+---
 
-- Add monitoring tools to check the health of the application
+## On-Premises Kubernetes with Ansible
 
-## Important Points:
+The VMware-based Kubernetes environment uses Ubuntu VMs. Ansible organizes provisioning into an inventory, playbooks, variables, and reusable roles rather than a sequence of manual installation commands.
 
-- At Crewmeister, we value creativity and pushing for better. You are encouraged to expand the solution as you find fit. To do so, you must ensure high-quality documentation and that the base solution is correctly executed.
-- All the tools used must be publicly accessible or explicitly documented on how to authenticate.
-- All the tools must be free to use.
+**Implementation:** [`crewmeister-k8s-ansible/`](crewmeister-k8s-ansible/)
 
- ## Submission:
-- Provide the link to your GitHub repository in the Greenhouse submission form.
-- Submit your completed project via the Greenhouse link in the email received from the Recruitment Manager.
+| Component | Responsibility |
+| --- | --- |
+| `inventory.yml` | Control-plane and worker inventory |
+| `ansible.cfg` | Ansible execution settings |
+| `preflight.yml` | Prerequisite checks |
+| `site.yml` | Main cluster automation playbook |
+| `roles/` | Reusable cluster automation roles |
+| `group_vars/` | Shared, non-secret settings |
+| `fetch-kubeconfig.yml` | Kubernetes client configuration retrieval |
+| `reset-cluster.yml` | Intentional cluster reset operations |
 
-## Challenge Application
+**Validate the Ansible configuration:**
 
-A Spring Boot application that provides a simple user management REST API.
+```bash
+cd crewmeister-k8s-ansible
+ansible-inventory -i inventory.yml --graph
+ansible-playbook -i inventory.yml site.yml --syntax-check
+ansible-playbook -i inventory.yml site.yml --list-tasks
+cd ..
+```
 
-### Technologies Used
+![Ansible configuration evidence](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-27%20154419.png)
 
-- Java 17
-- Spring Boot 3.3.5
-- MySQL Database
-- Flyway Migration
-- Maven
-- Spring Data JPA
-- Spring Actuator
+**Check the local cluster** (adjust the kubeconfig location to your workstation):
 
-### Pre-requisites
+```bash
+KUBECONFIG="$HOME/.kube/crewmeister-admin.conf" kubectl get nodes -o wide
+KUBECONFIG="$HOME/.kube/crewmeister-admin.conf" kubectl get pods -A -o wide --sort-by=.spec.nodeName
+```
 
-- JDK 17
-- MySQL
-- Maven
+![On-premises Kubernetes cluster nodes](docs/screenshots/onprem-cluster-nodes.png)
 
-### API Endpoints
+Ansible improves reproducibility and makes it easier to review configuration changes, parameterize hosts, and diagnose setup failures. Successful provisioning should still be verified by healthy nodes and workloads.
 
-#### GET /user
+---
 
-Retrieves a user by ID
+## Azure AKS with Terraform
 
-#### POST /user
+Terraform describes the cloud infrastructure for **Azure Kubernetes Service (AKS)**. The design distinguishes a **system node pool**, intended for cluster services, from a **user node pool**, intended for application workloads. Verify the actual deployed node pools before presenting the design as a live environment.
 
-Creates a new user
+**Implementation:** [`terraform/`](terraform/)
 
+### Infrastructure design
+
+- Reusable configuration and variables allow environment-specific input values.
+- `terraform plan` makes proposed infrastructure changes reviewable.
+- State and backend credentials must be kept out of source control.
+- An Azure Storage (`azurerm`) remote backend is suitable for collaborative state and locking, **but should only be claimed as implemented if the repository actually configures it**.
+
+```bash
+cd terraform
+terraform fmt -check -recursive
+terraform init
+terraform validate
+terraform plan
+cd ..
+```
+
+`terraform plan` previews proposed changes; it is **not** proof that Azure resources were deployed. To confirm an existing AKS cluster, use the kubeconfig and Azure configuration appropriate to your environment:
+
+```bash
+kubectl --kubeconfig="$HOME/.kube/crewmeister-aks" get nodes -L agentpool
+kubectl --kubeconfig="$HOME/.kube/crewmeister-aks" get pods -A -o wide
+```
+
+![Azure AKS node pools](docs/screenshots/aks-node-pools.png)
+
+![Azure AKS resource overview](docs/screenshots/MC_rg-crew-student-aks_aks-crew-student_francecentral.png)
+
+---
+
+## GitHub Actions — DevSecOps Pipeline
+
+GitHub Actions coordinates builds, tests, code quality, security scanning, and image publication. Whether individual checks actually block a merge or deployment depends on workflow failure handling and branch protection.
+
+| Stage | Technology | Evidence |
+| --- | --- | --- |
+| Build and tests | Maven | Workflow logs and Surefire reports, when generated |
+| Code quality | SonarQube Cloud | Analysis results and quality-gate status |
+| Secret detection | Gitleaks | Scan output or uploaded report, if configured |
+| Vulnerability scanning | Trivy | Findings for the configured target and severity threshold |
+| Container packaging | Docker | Image build logs and immutable version/tag |
+| Image publication | Container registry | Published tag or digest |
+
+**Security principles:**
+
+- Run configured tests and scans before promoting an image.
+- Require important status checks and suitable nonzero exit behavior where enforcement is needed.
+- Store tokens and credentials in appropriate secret stores or use short-lived identities.
+- Correlate source commit, scan results, container digest, and GitOps revision.
+- Describe reports as downloadable artifacts only if the workflow uploads them.
+
+**Implementation:** [Workflow definitions](.github/workflows/) · [GitHub Actions runs](https://github.com/bechirjw/crewmeister-app/actions)
+
+![GitHub Actions pipeline execution](docs/screenshots/ci-pipeline-1.png)
+
+![GitHub Actions checks and reports](docs/screenshots/ci-pipeline-2.png)
+
+---
+
+## Helm & Argo CD GitOps
+
+**Helm** packages Kubernetes manifests as parameterized templates. **Argo CD** tracks desired state in Git and reconciles the target cluster in accordance with its configured synchronization and access policies.
+
+**Implementation:** [`helm/crewmeister/`](helm/crewmeister/) · [`gitops/`](gitops/)
+
+```bash
+# From the repository root: validate the chart and render manifests
+helm lint helm/crewmeister -f helm/crewmeister/values-local.yaml
+helm template crewmeister helm/crewmeister -f helm/crewmeister/values-local.yaml
+
+# Inspect deployments (requires a configured Kubernetes context)
+kubectl get applications.argoproj.io -A
+kubectl get pods -A -o wide
+```
+
+### Review-controlled release flow
+
+1. CI builds the application, runs its configured tests and security analyses, and publishes the versioned image when the configured conditions pass.
+2. The image reference or Helm configuration is updated in the GitOps repository.
+3. A pull request is reviewed and passes any required checks before merging, **if repository rules enforce that review**.
+4. Argo CD observes the approved revision and reconciles Kubernetes according to the application's sync policy.
+5. Operators verify the deployed image, rollout health, and Argo CD synchronization state.
+
+![Argo CD application deployment](docs/screenshots/argocd-application.png)
+
+![GitOps release evidence](docs/screenshots/gitops-evidence.png)
+
+![Additional GitOps screenshot](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-29%20170546.png)
+
+The key distinction is **validated artifact versus authorized deployment**: a successful image build does not by itself grant permission to deploy.
+
+---
+
+## Monitoring, Logging & Alerting
+
+The observability layer aims to answer three questions: **Is the platform healthy? What failed? Who needs to act?**
+
+| Capability | Components / approach | What to demonstrate |
+| --- | --- | --- |
+| Monitoring | Kubernetes metrics and Grafana dashboards where configured | CPU, memory, and workload status |
+| Centralized logging | Loki and the configured log collector | Searchable application and cluster logs |
+| Alerting | Grafana Alerting or Alertmanager, where deployed | Rules, firing/resolution state, and tested notifications |
+
+Check the deployed monitoring components:
+
+```bash
+kubectl get pods -A | grep -Ei 'grafana|prometheus|loki|alertmanager'
+kubectl get svc -A | grep -Ei 'grafana|prometheus|loki|alertmanager'
+kubectl top nodes  # Requires a working metrics API
+```
+
+Confirm the metrics collector, Loki ingestion agent, and notification receiver in actual deployment manifests before claiming that an integration is operational. A Grafana dashboard alone does not demonstrate working alert notifications.
+
+### Additional observability screenshots
+
+![Observability screenshot 1](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-30%20210132.png)
+
+![Observability screenshot 2](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-30%20210052.png)
+
+![Observability screenshot 3](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-30%20194629.png)
+
+---
+
+## Persistent Storage — Local Path Provisioner
+
+For the on-premises cluster, **Local Path Provisioner** can dynamically provision node-local PersistentVolumes from Kubernetes PersistentVolumeClaims.
+
+```bash
+KUBECONFIG="$HOME/.kube/crewmeister-admin.conf" kubectl get storageclass
+KUBECONFIG="$HOME/.kube/crewmeister-admin.conf" kubectl get pvc -A
+KUBECONFIG="$HOME/.kube/crewmeister-admin.conf" kubectl get pv
+KUBECONFIG="$HOME/.kube/crewmeister-admin.conf" kubectl get pods -n local-path-storage
+```
+
+![Kubernetes local path persistent storage](docs/screenshots/local-path-storage.png)
+
+**Trade-off:** node-local volumes do not automatically provide replication or high availability. A `Bound` PVC proves binding, not end-to-end data durability; use a separate write/read test to verify persistence.
+
+---
+
+## Application & API Testing
+
+![Application test screenshot 1](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-31%20134446.png)
+
+![Application test screenshot 2](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-31%20134623.png)
+
+Run the Maven tests and package the application:
+
+```bash
+./mvnw test
+./mvnw package
+```
+
+With the application running and port-forwarded to `127.0.0.1:18080`, perform an HTTP smoke test:
+
+```bash
+curl -sS -w '\nHTTP %{http_code}\n' \
+  'http://127.0.0.1:18080/user?id=1'
+```
+
+Confirm the expected HTTP status and response body alongside pod readiness. Investigate unexpected `5xx` responses; a prior `GET /user?id=2` returned HTTP 500 and should be retested or documented as resolved.
+
+---
+
+## Repository Structure
+
+```text
+crewmeister-app/
+├── .github/workflows/          # GitHub Actions workflows
+├── crewmeister-k8s-ansible/    # On-premises Kubernetes automation
+├── terraform/                  # Azure AKS Infrastructure as Code
+├── helm/crewmeister/           # Application Helm chart
+├── gitops/                     # Argo CD / GitOps manifests
+├── docs/screenshots/           # Evidence referenced by this README
+├── src/                       # Spring Boot source and tests
+├── Dockerfile                 # Container build
+├── compose.yaml               # Local Docker Compose definition
+├── pom.xml                    # Maven project definition
+├── INSTALL.md                 # Installation instructions
+└── README.md                  # Project overview
+```
+
+## Evidence & Documentation
+
+| Evidence | What it demonstrates |
+| --- | --- |
+| On-premises nodes and Ansible | Automated cluster configuration and node readiness |
+| AKS node pools and Terraform | Azure infrastructure architecture and scheduling topology |
+| GitHub Actions and scanner results | CI execution, testing, quality, and security analysis |
+| Pull request and Argo CD | Deployment review, reconciliation, and application health |
+| Grafana and Loki | Workload metrics and centralized log analysis |
+| PVC status and HTTP test | Storage provisioning and application response |
+
+Images are referenced relative to this root README, for example:
+
+```markdown
+![AKS node pools](docs/screenshots/aks-node-pools.png)
+```
+
+Image filenames are case-sensitive. Ensure each screenshot exists under `docs/screenshots/` and does not expose passwords, tokens, kubeconfigs, or private keys.
+
+## Additional Screenshots
+
+These images are included for reference. Review the actual screenshot contents and move each image to its relevant technical section with a precise caption.
+
+![Evidence 2026-10-27 205018](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-27%20205018.png)
+
+![Evidence 2026-10-30 210719](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-30%20210719.png)
+
+![Evidence 2026-11-01 111711](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20111711.png)
+
+![Evidence 2026-11-01 112136](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20112136.png)
+
+![Evidence 2026-11-01 112418](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20112418.png)
+
+![Evidence 2026-11-01 112443](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20112443.png)
+
+![Evidence 2026-11-01 114742](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20114742.png)
+
+![Evidence 2026-11-01 114951](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20114951.png)
+
+![Evidence 2026-11-01 115458](docs/screenshots/Capture%20d%27%C3%A9cran%202026-11-01%20115458.png)
+
+![DevOps GitOps Architecture Flow-1](docs/screenshots/DevOps%20GitOps%20Architecture%20Flow-1.png)
+
+![Hybrid Infrastructure & Application Delivery (1)-1](docs/screenshots/Hybrid%20Infrastructure%20%26%20Application%20Delivery%20%281%29-1.png)
+
+## Quick Verification
+
+```bash
+# Confirm the active Kubernetes context before making changes
+kubectl config current-context
+
+# Inspect infrastructure and workloads
+kubectl get nodes -o wide
+kubectl get pods -A -o wide --sort-by=.spec.nodeName
+
+# Validate chart rendering without deployment
+helm lint helm/crewmeister -f helm/crewmeister/values-local.yaml
+```
+
+> **Security:** Never commit passwords, API tokens, kubeconfigs, private keys, Terraform state, `.env` files containing secrets, or unredacted screenshots. Execute Terraform apply, Ansible reset/provisioning, and Kubernetes mutations only after verifying the intended target environment.
+
+---
+
+**Infrastructure as Code · Security-Aware CI · Review-Controlled GitOps · Observable Kubernetes**
+
+*Crewmeister DevSecOps engineering project*
