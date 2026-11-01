@@ -251,16 +251,9 @@ KUBECONFIG="$HOME/.kube/crewmeister-admin.conf" kubectl get pods -n local-path-s
 
 ## Application & API Testing
 
-![Application test screenshot 1](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-31%20134446.png)
 
-![Application test screenshot 2](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-31%20134623.png)
 
-Run the Maven tests and package the application:
 
-```bash
-./mvnw test
-./mvnw package
-```
 
 With the application running and port-forwarded to `127.0.0.1:18080`, perform an HTTP smoke test:
 
@@ -269,7 +262,9 @@ curl -sS -w '\nHTTP %{http_code}\n' \
   'http://127.0.0.1:18080/user?id=1'
 ```
 
-Confirm the expected HTTP status and response body alongside pod readiness. Investigate unexpected `5xx` responses; a prior `GET /user?id=2` returned HTTP 500 and should be retested or documented as resolved.
+![Application test screenshot 1](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-31%20134446.png)
+
+![Application test screenshot 2](docs/screenshots/Capture%20d%27%C3%A9cran%202026-10-31%20134623.png)
 
 ---
 
